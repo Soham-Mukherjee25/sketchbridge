@@ -20,8 +20,6 @@ const FIREBASE_CONFIG = {
   appId:             "1:1089242803227:web:300e67aa6ce18f4bbb9cbe"
 };
 
-const ROOM_EXPIRY_MS = 24 * 60 * 60 * 1000;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Room auto-clear: strokes older than 24 hours are removed by the client.
 // No cloud functions needed — pure client-side cleanup on room join.
