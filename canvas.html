@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SketchBridge — Canvas</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Theme override: light mode ── */
+    [data-theme="light"] {
+      --bg:           #f4f4f8;
+      --bg-surface:   #eaeaf0;
+      --bg-card:      #ffffff;
+      --bg-input:     #f0f0f5;
+      --border:       rgba(0,0,0,0.08);
+      --border-hover: rgba(0,0,0,0.15);
+      --text-primary:   #0f0f1a;
+      --text-secondary: #44446a;
+      --text-muted:     #9999bb;
+    }
+    [data-theme="light"] body { background: var(--bg); }
+    [data-theme="light"] body::before { background-image: linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px); }
+    [data-theme="light"] #main-canvas { background: #f4f4f8; }
+
+    /* ── Layout ── */
+    body { overflow: hidden; }
+    .canvas-shell { display:flex; flex-direction:column; height:100vh; width:100vw; position:relative; z-index:1; }
+
+    /* ── Topbar ── */
+    .topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      height:52px; padding:0 1rem;
+      background:rgba(8,8,15,0.85); backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--border); flex-shrink:0; z-index:50; gap:1rem;
+    }
+    [data-theme="light"] .topbar { background:rgba(244,244,248,0.88); }
+    .topbar-left  { display:flex; align-items:center; gap:10px; min-width:0; }
+    .topbar-center{ display:flex; align-items:center; gap:6px; flex:1; justify-content:center; }
+    .topbar-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+    .topbar-logo { font-family:var(--font-display); font-weight:800; font-size:1rem; letter-spacing:-0.03em; white-space:nowrap; display:flex; align-items:center; gap:6px; }
+    .logo-dot    { width:7px; height:7px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); }
+    .topbar-divider { width:1px; height:20px; background:var(--border); flex-shrink:0; }
+
+    .room-chip {
+      display:flex; align-items:center; gap:8px; background:var(--bg-card);
+      border:1px solid var(--border); border-radius:var(--radius-md);
+      padding:4px 10px; font-family:var(--font-mono); font-size:0.8rem;
+      letter-spacing:0.1em; color:var(--accent); cursor:pointer; transition:var(--transition); user-select:none;
+    }
+    .room-chip:hover { border-color:var(--border-hover); }
+    .room-chip .chip-label { font-family:var(--font-body); color:var(--text-muted); font-size:0.7rem; letter-spacing:0; }
+
+    .tool-btn {
+      display:flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius:var(--radius-sm);
+      border:1px solid transparent; background:transparent;
+      color:var(--text-secondary); cursor:pointer; transition:var(--transition); position:relative;
+    }
+    .tool-btn:hover { background:var(--bg-card); color:var(--text-primary); border-color:var(--border); }
+    .tool-btn.active { background:var(--accent-dim); color:var(--accent); border-color:rgba(79,142,247,0.3); }
+    .tool-btn[title]:hover::after {
+      content:attr(title); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%);
+      background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm);
+      color:var(--text-primary); font-size:0.7rem; white-space:nowrap; padding:3px 8px;
+      pointer-events:none; z-index:200; font-family:var(--font-body);
+    }
+    .tool-divider { width:1px; height:20px; background:var(--border); margin:0 2px; flex-shrink:0; }
+
+    /* ── Canvas area ── */
+    .canvas-area { flex:1; position:relative; overflow:hidden; cursor:crosshair; }
+    #main-canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; background:var(--bg); }
+
+    /* ── Page strip ── */
+    #page-strip { display:flex; align-items:center; gap:4px; padding:5px 10px;
+      background:rgba(8,8,15,0.85); backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; z-index:40; flex-shrink:0; }
+    [data-theme="light"] #page-strip { background:rgba(244,244,248,0.9); }
+
+    /* ── Status bar ── */
+    .statusbar {
+      display:flex; align-items:center; justify-content:space-between;
+      height:30px; padding:0 1rem;
+      background:rgba(8,8,15,0.7); border-top:1px solid var(--border); flex-shrink:0; z-index:50;
+    }
+    [data-theme="light"] .statusbar { background:rgba(234,234,240,0.7); }
+    .statusbar-item { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted); letter-spacing:0.04em; }
+
+    /* ── Waiting overlay ── */
+    .waiting-overlay {
+      position:absolute; inset:0; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:1rem;
+      pointer-events:none; z-index:5; transition:opacity 0.4s ease;
+    }
+    .waiting-overlay.hidden { opacity:0; }
+    .waiting-icon { width:64px; height:64px; border-radius:var(--radius-lg); background:var(--bg-card); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
+    .waiting-title { font-family:var(--font-display); font-size:1.2rem; font-weight:700; color:var(--text-secondary); }
+    .waiting-sub   { font-size:0.85rem; color:var(--text-muted); text-align:center; max-width:280px; line-height:1.6; }
+    .waiting-code  { font-family:var(--font-mono); font-size:1.8rem; font-weight:500; color:var(--accent); letter-spacing:0.25em; background:var(--accent-dim); border:1px solid rgba(79,142,247,0.2); border-radius:var(--radius-md); padding:0.5rem 1.2rem; }
+
+    /* ── QR popover ── */
+    .qr-popover {
+      position:absolute; top:calc(100% + 8px); right:0;
+      background:var(--bg-card); border:1px solid var(--border-hover);
+      border-radius:var(--radius-lg); padding:1.2rem;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4); z-index:300;
+      display:none; flex-direction:column; align-items:center; gap:0.75rem;
+      min-width:200px;
+    }
+    .qr-popover.open { display:flex; }
+    .qr-popover canvas { border-radius:8px; }
+    .qr-label { font-size:0.75rem; color:var(--text-secondary); text-align:center; line-height:1.5; }
+    .qr-url   { font-family:var(--font-mono); font-size:0.65rem; color:var(--text-muted); word-break:break-all; text-align:center; }
+
+    /* ── Modals ── */
+    .modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px);
+      z-index:200; display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+    }
+    .modal-backdrop.open { opacity:1; pointer-events:auto; }
+    .modal-box { background:var(--bg-card); border:1px solid var(--border-hover); border-radius:var(--radius-xl); padding:2rem; width:340px; max-width:90vw; }
+    .modal-box h2 { font-family:var(--font-display); font-size:1.1rem; margin-bottom:0.5rem; }
+    .modal-box p  { font-size:0.875rem; color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.6; }
+    .modal-actions { display:flex; gap:8px; }
+    .modal-field   { margin-bottom:1rem; }
+    .modal-label   { display:block; font-size:0.75rem; font-weight:500; color:var(--text-muted); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.5rem; font-family:var(--font-mono); }
+
+    /* ── Text cursor on canvas ── */
+    .canvas-area.text-mode { cursor:text; }
+  </style>
+</head>
+<body>
+<div class="canvas-shell">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo"><span class="logo-dot"></span>SketchBridge</div>
+      <div class="topbar-divider"></div>
+      <div class="room-chip" id="room-chip">
+        <span class="chip-label">ROOM</span>
+        <span id="room-code-display">——</span>
+      </div>
+      <span class="badge" id="conn-badge" style="display:none;"></span>
+    </div>
+
+    <div class="topbar-center">
+      <button class="tool-btn" id="btn-undo"     title="Undo (Ctrl+Z)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13C5 8 9 5 14 5a9 9 0 0 1 0 18 9 9 0 0 1-8-4.9"/></svg>
+      </button>
+      <button class="tool-btn" id="btn-redo"     title="Redo (Ctrl+Y)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13C19 8 15 5 10 5a9 9 0 0 0 0 18 9 9 0 0 0 8-4.9"/></svg>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="btn-clear"    title="Clear canvas">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <!-- QR code button -->
+      <div style="position:relative;">
+        <button class="tool-btn" id="btn-qr" title="Show QR code">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/>
+            <rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/>
+            <rect x="18" y="18" width="3" height="3"/>
+          </svg>
+        </button>
+        <div class="qr-popover" id="qr-popover">
+          <canvas id="qr-canvas" width="160" height="160"></canvas>
+          <div class="qr-label">Scan to join on phone</div>
+          <div class="qr-url" id="qr-url-label"></div>
+        </div>
+      </div>
+
+      <!-- Theme toggle -->
+      <button class="tool-btn" id="btn-theme" title="Toggle light/dark mode">
+        <svg id="icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+
+      <!-- Download -->
+      <button class="tool-btn" id="btn-download" title="Download as PNG">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+
+      <!-- Home -->
+      <button class="btn btn-ghost" id="btn-home" style="font-size:0.8rem;padding:0.4rem 0.8rem;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </button>
+    </div>
+  </div>
+
+  <!-- Page strip (injected by JS) -->
+  <div id="page-strip"></div>
+
+  <!-- Canvas -->
+  <div class="canvas-area" id="canvas-area">
+    <canvas id="main-canvas"></canvas>
+    <div class="waiting-overlay" id="waiting-overlay">
+      <div class="waiting-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/></svg>
+      </div>
+      <div class="waiting-title">Waiting for phone</div>
+      <div class="waiting-sub">Open this URL on your phone and enter the room code</div>
+      <div class="waiting-code" id="waiting-code-display">——</div>
+      <div class="waiting-sub" style="font-family:var(--font-mono);font-size:0.75rem;" id="waiting-url"></div>
+    </div>
+  </div>
+
+  <!-- Statusbar -->
+  <div class="statusbar">
+    <div class="statusbar-item">
+      <span class="dot-live" style="background:#444466;"></span>
+      <span id="status-text">Connecting…</span>
+    </div>
+    <div class="statusbar-item"><span id="stroke-count">0 strokes</span></div>
+    <div class="statusbar-item"><span id="status-time"></span></div>
+  </div>
+</div>
+
+<!-- Clear confirm modal -->
+<div class="modal-backdrop" id="clear-modal">
+  <div class="modal-box">
+    <h2>Clear canvas?</h2>
+    <p>This removes all strokes on this page for everyone. Cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="modal-confirm" style="flex:1;background:#ef4444;border-color:#ef4444;box-shadow:none;">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<!-- Password modal -->
+<div class="modal-backdrop" id="pw-modal">
+  <div class="modal-box">
+    <h2>Room is password protected</h2>
+    <p>Enter the password to view this canvas.</p>
+    <div class="modal-field">
+      <label class="modal-label" for="pw-input">Password</label>
+      <input class="input" id="pw-input" type="password" placeholder="Enter room password" autocomplete="off" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="pw-cancel" style="flex:1;" onclick="window.location.href='index.html'">Cancel</button>
+      <button class="btn btn-primary" id="pw-submit" style="flex:1;">Enter</button>
+    </div>
+    <p style="margin-top:0.75rem;margin-bottom:0;font-size:0.75rem;color:var(--text-muted);">Wrong password → redirected home.</p>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- QR code library (lightweight, no external CDN dependency risk) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="canvas.js"></script>
+</body>
+</html>

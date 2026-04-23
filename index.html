@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SketchBridge — Wireless Drawing Tablet</title>
+  <meta name="description" content="Turn your phone into a wireless drawing tablet for your PC. No app, no cable, no cost." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Landing-specific layout ── */
+    .page-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,8,15,0.7);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-logo .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      max-width: 680px;
+      width: 100%;
+      margin-top: 4rem;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.08;
+      margin-bottom: 1.1rem;
+    }
+    .hero h1 .accent-word {
+      color: var(--accent);
+      position: relative;
+    }
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+      font-weight: 300;
+      line-height: 1.7;
+    }
+
+    /* ── Room Panel ── */
+    .room-panel {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto 2.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .room-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 0.55rem;
+      border: none;
+      border-radius: calc(var(--radius-md) - 2px);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .field-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-mono);
+    }
+    .field-group { margin-bottom: 1rem; }
+
+    .room-code-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .room-code-display .code-box {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      text-align: center;
+    }
+    .copy-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+    .share-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.75rem;
+      line-height: 1.5;
+    }
+
+    /* ── How it works ── */
+    .how-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 720px;
+      margin: 0 auto 3rem;
+    }
+    .how-card {
+      flex: 1;
+      min-width: 160px;
+      max-width: 200px;
+      text-align: center;
+      padding: 1.25rem 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .how-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.1em;
+    }
+    .how-card h3 {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    .how-card p {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Features list ── */
+    .features-row {
+      display: flex;
+      gap: 0.5rem 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 560px;
+      margin: 0 auto 2rem;
+    }
+    .feat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .feat-item svg { color: var(--accent); flex-shrink: 0; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="nav-logo">
+      <span class="logo-dot"></span>
+      SketchBridge
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="badge badge-success" id="nav-status" style="display:none;">
+        <span class="dot-live"></span> Connected
+      </span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="page-wrap page-enter">
+
+    <div class="hero">
+      <div class="hero-eyebrow">
+        <span class="badge badge-accent">Free &amp; Open</span>
+        <span class="badge badge-accent">No Downloads</span>
+      </div>
+
+      <h1>Turn your phone into a<br /><span class="accent-word">drawing tablet</span></h1>
+
+      <p class="hero-sub">
+        Open the same link on your phone and PC. Enter a room code.
+        Draw wirelessly — no app, no cable, no cost.
+      </p>
+
+      <!-- Room Panel -->
+      <div class="room-panel">
+        <div class="tab-row">
+          <button class="tab-btn active" data-tab="create">Create Room</button>
+          <button class="tab-btn" data-tab="join">Join Room</button>
+        </div>
+
+        <!-- CREATE TAB -->
+        <div class="tab-panel active" id="tab-create">
+          <div class="field-group">
+            <span class="field-label">Your Room Code</span>
+            <div class="room-code-display">
+              <div class="code-box" id="generated-code">——</div>
+              <button class="copy-btn" id="copy-code-btn" title="Copy code">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" id="regen-btn" style="flex:1;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              New Code
+            </button>
+            <button class="btn btn-primary" id="open-canvas-btn" style="flex:2;">
+              Open Canvas
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+
+          <p class="share-note">
+            Share this code with anyone — they can join from any device at this URL
+          </p>
+        </div>
+
+        <!-- JOIN TAB -->
+        <div class="tab-panel" id="tab-join">
+          <div class="field-group">
+            <label class="field-label" for="join-input">Enter Room Code</label>
+            <input
+              class="input"
+              id="join-input"
+              type="text"
+              maxlength="6"
+              placeholder="e.g. AB3X9K"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            />
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:0.5rem;">
+            <button class="btn btn-primary" id="join-as-canvas-btn" style="flex:1;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8M12 17v4"/>
+              </svg>
+              PC / Canvas
+            </button>
+            <button class="btn btn-ghost" id="join-as-tablet-btn" style="flex:1;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="5" y="2" width="14" height="20" rx="2"/>
+                <circle cx="12" cy="17" r="1"/>
+              </svg>
+              Phone / Draw
+            </button>
+          </div>
+
+          <p class="share-note">
+            PC = canvas view &nbsp;·&nbsp; Phone = drawing input
+          </p>
+        </div>
+      </div>
+
+      <!-- How it works -->
+      <div class="how-row">
+        <div class="how-card">
+          <div class="how-num">01 —</div>
+          <h3>Create a Room</h3>
+          <p>Get a 6-character code. Open canvas on your PC.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-num">02 —</div>
+          <h3>Join on Phone</h3>
+          <p>Open same URL on phone, enter code, select Draw.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-num">03 —</div>
+          <h3>Draw Wirelessly</h3>
+          <p>Strokes appear instantly on the PC canvas.</p>
+        </div>
+      </div>
+
+      <!-- Feature chips -->
+      <div class="features-row">
+        <span class="feat-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Real-time sync
+        </span>
+        <span class="feat-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          No account needed
+        </span>
+        <span class="feat-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Rooms auto-clear in 24h
+        </span>
+        <span class="feat-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Up to 100 simultaneous users
+        </span>
+        <span class="feat-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Works on any browser
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 SketchBridge &nbsp;·&nbsp; Free forever &nbsp;·&nbsp; Powered by Firebase Realtime Database
+  </footer>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
