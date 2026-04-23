@@ -10,14 +10,13 @@
 //     → Start in test mode → choose any region → Done
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyD59tTVIuYktmJvaTPLmLjgd_lxlTjxQpU",
+  authDomain: "sketchbridge-39df2.firebaseapp.com",
+  projectId: "sketchbridge-39df2",
+  storageBucket: "sketchbridge-39df2.firebasestorage.app",
+  messagingSenderId: "1089242803227",
+  appId: "1:1089242803227:web:300e67aa6ce18f4bbb9cbe"
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
